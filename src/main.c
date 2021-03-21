@@ -7,38 +7,30 @@
 #define A2 14.5
 #define PI 3.141592
 
-volatile char move0 = 0;
-volatile char move1 = 0;
+float q0;
 float q1;
-float q2;
 float x = 5;
-float y = 5;
-int pulse = 142;
+float y = 10;
 
-ISR(TIMER1_COMPA_vect) {  
-    move0 = 1;
-    move1 = 1;
+ISR(TIMER1_COMPA_vect) {
     PORTC &= ~_BV(PC0);
     PORTC &= ~_BV(PC1);
 }
-int pulsecalc (double angle) {
-    return round(105/PI * angle + 37);
-}
 
-double deg_to_ms0 (double angle) {
-    return -1.6/PI * angle + 2.3;
+//CALCULATE PULSELENGTHS FROM ANGLE
+int pulsecalc0 (double angle) {
+    return 1250 - round(-105/PI * angle + 142);
 }
-double deg_to_ms1 (double angle) {
-    return 1.6/PI * angle + 0.7;
+int pulsecalc1 (double angle) {
+    return 1250 - round(105/PI * angle + 37);
 }
 
 int main(void)
 {
-    DDRA |= 0xff;
-    PORTA = 0x00;
+    //SET C PINS AS OUTPUT
     DDRC |= _BV(PC0)|_BV(PC1);
-    // make the LED pin an output for PORTA
 
+    //SET UP INTERRUPT
     TCCR1A |= _BV(COM1A1);
     TCCR1A &= ~_BV(COM1A0);
 
@@ -48,29 +40,29 @@ int main(void)
     TCCR1B  |= _BV(CS12);
     TCCR1B &= ~(_BV(CS11)|_BV(CS10));
 
-    OCR1A = 1250;
-    
+    OCR1A = 1250;   //SET MATCH ON 1250 (FOR 50 HZ PULSES)
 
     sei();
     TIMSK1 |= _BV(OCIE1A);
 
-    q2 = acos((x*x+y*y-A1*A1-A2*A2)/(2*A1*A2));
-    q1 = PI/2 + (atan(y/x) - atan(A2*sin(q2)/(A1+A2*cos(q2))));
-    int test = 1250-pulsecalc(q1);
-    int test1 = 1250-pulsecalc(q2);
+    //CALCULATIONS OF THE ANGLES (TO DO: MAKE FUNCTION)
+    q1 = acos((x*x+y*y-A1*A1-A2*A2)/(2*A1*A2));
+    q0 = (atan2(y,x) + atan2(A2*sin(q1),(A1+A2*cos(q1))));
+
+    //POTENTIAL FASTER SOLUTIONS FOR ANGLE CALCULATIONS
+    //q2 = atan2(sqrt(1-(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2)),(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2));
+    //q1 = atan2(y,x)+atan2+-A2*sin(q2),A1+A2*cos(q2));
+
+    int test_pulse1 = pulsecalc1(q1);
+    int test_pulse0 = pulsecalc0(q0);
+    
     while (1)
     {
-        // if(q1 != 0 && q2 != 0){
-        //     move_arm_0(q1);
-        //     move_arm_1(q2);
-        // }
-        if(TCNT1 == test) {
+        if(TCNT1 == test_pulse0) {
             PORTC |= _BV(PC0);
-        } if(TCNT1 == test1) {
+        } if(TCNT1 == test_pulse1) {
             PORTC |= _BV(PC1);
         }
-        
-        
     }
 
     return 0;
