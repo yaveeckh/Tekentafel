@@ -22,31 +22,26 @@ float pulse0 = 100;
 float pulse1 = 100;
 
 char flag0 = 0;
-char flag1 = 0;
 
 ISR(TIMER1_COMPA_vect){
-    if (flag0){
-        flag0 = 0;
-        PORTC &= ~_BV(PC0);
-        OCR1A = 1250;
-    } else {
+    if (flag0 == 0){
         flag0 = 1;
         PORTC |= _BV(PC0);
+        PORTC &= ~_BV(PC1);
         OCR1A = pulse0;
+    } else if (flag0 == 1) {
+        flag0 = 2;
+        PORTC &= ~_BV(PC0);
+        PORTC |= _BV(PC1);
+        OCR1A = pulse1;
+    } else {
+        flag0 = 0;
+        PORTC &= ~_BV(PC0);
+        PORTC &= ~_BV(PC1);
+        OCR1A = 1250;
     }
 }
 
-ISR(TIMER3_COMPA_vect) {
-    if (flag1){
-        flag1 = 0;
-        PORTC &= ~_BV(PC1);
-        OCR3A = 1250;
-    } else {
-        flag1 = 1;
-        PORTC |= _BV(PC1);
-        OCR3A = pulse1;
-    }
-}
 
 //CALCULATE PULSELENGTHS FROM ANGLE
 int pulsecalc0 (double angle) {
@@ -65,6 +60,11 @@ Punt calculateAngles(Punt coord){
     return angles;
 }
 
+Punt calculateCircle(float x, float y, float theta, float r) {
+    Punt postions = {x+r*cos(theta), y+r*sin(theta)};
+    return postions;
+}
+
 int main(void)
 {
 
@@ -74,25 +74,17 @@ int main(void)
     //SET UP INTERRUPT
     TCCR1A |= _BV(COM1A1);
     TCCR1A &= ~_BV(COM1A0);
-    TCCR3A |= _BV(COM3A1);
-    TCCR3A &= ~_BV(COM3A0);
 
     TCCR1B |= _BV(WGM12);
     TCCR1B &= ~_BV(WGM13);
-    TCCR3B |= _BV(WGM32);
-    TCCR3B &= ~_BV(WGM33);
 
     TCCR1B  |= _BV(CS12);
     TCCR1B &= ~(_BV(CS11)|_BV(CS10));
-    TCCR3B |= _BV(CS32);
-    TCCR3B &= ~(_BV(CS31)|_BV(CS30));
 
     OCR1A = 1250;   //SET MATCH ON 1250 (FOR 50 HZ PULSES)
-    OCR3A = 0;
 
     sei();
     TIMSK1 |= _BV(OCIE1A);
-    TIMSK3 |= _BV(OCIE3A);
 
     //POTENTIAL FASTER SOLUTIONS FOR ANGLE CALCULATIONS
     //q2 = atan2(sqrt(1-(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2)),(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2));
@@ -106,8 +98,24 @@ int main(void)
 
     pulse0 = pulsecalc0(q0);
     pulse1 = pulsecalc1(q1);
+    
 
 
+    float angle = 0;
+    float r = 2;
+    float x = 5;
+    float y = 5;
+
+    while(angle <= 2*PI) {
+        Punt postities = calculateCircle(x,y, angle, 4);
+        Punt angles = calculateAngles(postities);
+        q0 = angles.x;
+        q1 = angles.y;
+        pulse0 = pulsecalc0(q0);
+        pulse1 = pulsecalc1(q1);
+        angle += 0.005;
+        _delay_ms(5);
+    }
     
     while (1)
     {
