@@ -1,5 +1,6 @@
-
 #include "constants.h"
+#include "dwenguino/dwenguino_board.h"
+#include "dwenguino/dwenguino_lcd.h"
 //Initialiseren van de pwm pulse variabelen voor motor 0 en 1
 float pulse0 = 0;
 float pulse1 = 0;
@@ -7,11 +8,12 @@ float pen_up_pulse = 62;
 
 
 //OXO
-unsigned char initialized = 0;
+unsigned char initialize = 0;
 unsigned char waiting_for_input = 0;
 unsigned char player_turn = 0;
 unsigned char run_game = 1;
 unsigned char end_game;
+unsigned char mainmenu = 1;
 
 char winner; //0 = player 0, 1 = player 1, -1 = draw
 
@@ -179,9 +181,10 @@ void Initialize() {
     drawLine(beginLijn3, eindLijn3);
     drawLine(beginLijn4, eindLijn4);
 
+    
     curr_pos.x = COORDINATE_OFFSET_X + 0.5 * CELL_SPACING;
     curr_pos.y = COORDINATE_OFFSET_Y + 0.5 * CELL_SPACING;
-    initialized = 1;
+    initialize = 0;
 }
 
 void CheckInput() {
@@ -237,7 +240,7 @@ int main(void)
 
     OCR1A = 1250;   //SET MATCH ON 1250 (FOR 50 HZ PULSES)
 
-    sei();
+    //sei();
     TIMSK1 |= _BV(OCIE1A);
 
     //Input via board
@@ -249,6 +252,11 @@ int main(void)
     //q2 = atan2(sqrt(1-(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2)),(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2));
     //q1 = atan2(y,x)+atan2+-A2*sin(q2),A1+A2*cos(q2));
     
+    initBoard();
+    initLCD();
+    clearLCD();
+
+    backlightOn();
 
     while (1)
     {
@@ -256,21 +264,41 @@ int main(void)
         //Print on screen "Press joystick to start"
         //Check for input
 
-
+        
         while(run_game) {
             //Game_loop
+            CheckInput();
+            if (mainmenu) {
+                printStringToLCD("Press center to start", 0, 0);
+                if (center_pressed) {
+                    mainmenu = 0;
+                    initialize = 1;
+                    center_pressed = 0;
+                    sei();
+                    clearLCD();
+                    _delay_ms(500);
+                }
+            }
 
-            if (!initialized) {
+            if (initialize) {
                 //Initialized
+                printStringToLCD("Initializing ...", 0, 0);
                 Initialize();
                 waiting_for_input = 1;
             }
 
-            while (waiting_for_input) {
+            if (waiting_for_input) {
                 //Move position when buttons pressed
-                CheckInput();
+
+                printStringToLCD("N/S/W/E to move", 0, 0);
+                printStringToLCD("C: Confirm", 1, 0);
+
+
                 if (left_pressed) {
-                    position_x = (position_x - 1)%3;
+                    //position_x = (position_x - 1)%3;
+                    waiting_for_input = 0;
+                    end_game = 1;
+                    clearLCD();
                     _delay_ms(500);
                 }
 
@@ -285,7 +313,7 @@ int main(void)
                 }
 
                 if (down_pressed){
-                    position_y = (position_y - 1) % 3;
+                    position_y = (position_y - 1) % 3;  
                     _delay_ms(500);
                 }
                 curr_pos.x = COORDINATE_OFFSET_X + (position_x + 0.5) * CELL_SPACING;
@@ -311,15 +339,22 @@ int main(void)
                 
             }
 
+            if (end_game) {
+                
+                printStringToLCD("Congrats PX won!", 0, 0);
+                printStringToLCD("C: Restart!", 1, 0);
+                if (center_pressed) {
+                    end_game = 0;
+                    mainmenu = 1;
+                    clearLCD();
+                    _delay_ms(500);
+                }
+            }
+
             //Check for win
-            CheckWin();
+            //CheckWin();
 
         }
-
-        while(end_game) {
-
-        }
-        
 
     }
 
