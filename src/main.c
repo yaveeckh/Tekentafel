@@ -1,11 +1,13 @@
 #include "constants.h"
 #include "dwenguino/dwenguino_board.h"
 #include "dwenguino/dwenguino_lcd.h"
+#include <stdlib.h>
+#include <string.h>
 //Initialiseren van de pwm pulse variabelen voor motor 0 en 1
 float pulse0 = 0;
 float pulse1 = 0;
 float pen_up_pulse = 62;
-
+int board [3][3];
 
 //OXO
 unsigned char initialize = 0;
@@ -161,26 +163,60 @@ void drawCross(Punt midden) {
 void CheckWin() {
     //Check win
     //Check board
+    for(int y = 0; y < 3; y++){
+        if (board[y][0] == 1 && board[y][1] == 0 && board[y][2] == 1) {
+        waiting_for_input = 0;
+        end_game = 1;
+        return;
+        }
+        
+    }
+
+    for(int x = 0; x < 3; x++){
+        if (board[0][x] == 1 && board[1][x] == 0 && board[2][x] == 1) {
+        waiting_for_input = 0;
+        end_game = 1;
+        return;
+        }
+    }
+    
+    if (board[0][0] == 1 && board[1][1] == 0 && board[2][2] == 1) {
+        waiting_for_input = 0;
+        end_game = 1;
+        return;
+    }
+
+    if (board[2][0] == 1 && board[1][1] == 0 && board[0][2] == 1) {
+        waiting_for_input = 0;
+        end_game = 1;
+        return;
+    }
+    
 
     //if win||board full -> go to end and declare winner
 }
 
 
 void Initialize() {
-    Punt beginLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
-    Punt eindLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    Punt beginLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, COORDINATE_OFFSET_Y};
-    Punt eindLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    Punt beginLijn3 = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y + CELL_SPACING,};
-    Punt eindLijn3 = {COORDINATE_OFFSET_X + 3 * CELL_SPACING, COORDINATE_OFFSET_Y + CELL_SPACING};
-    Punt beginLijn4 = {COORDINATE_OFFSET_X, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    Punt eindLijn4 = {COORDINATE_OFFSET_X + 3 *CELL_SPACING, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt beginLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
+    // Punt eindLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt beginLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, COORDINATE_OFFSET_Y};
+    // Punt eindLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt beginLijn3 = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y + CELL_SPACING,};
+    // Punt eindLijn3 = {COORDINATE_OFFSET_X + 3 * CELL_SPACING, COORDINATE_OFFSET_Y + CELL_SPACING};
+    // Punt beginLijn4 = {COORDINATE_OFFSET_X, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt eindLijn4 = {COORDINATE_OFFSET_X + 3 *CELL_SPACING, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
     
-    drawLine(beginLijn1, eindLijn1);
-    drawLine(beginLijn2, eindLijn2);
-    drawLine(beginLijn3, eindLijn3);
-    drawLine(beginLijn4, eindLijn4);
+    // drawLine(beginLijn1, eindLijn1);
+    // drawLine(beginLijn2, eindLijn2);
+    // drawLine(beginLijn3, eindLijn3);
+    // drawLine(beginLijn4, eindLijn4);
 
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 3; x++) {
+            board[y][x] = -1;
+        }
+    }
     
     curr_pos.x = COORDINATE_OFFSET_X + 0.5 * CELL_SPACING;
     curr_pos.y = COORDINATE_OFFSET_Y + 0.5 * CELL_SPACING;
@@ -202,6 +238,14 @@ void CheckInput() {
         }
     } else {
         right_pressed = 0;
+    }
+
+    if(~PINE & _BV(PE5)) {                  //If west button is pressed
+        if (!down_pressed) {                     //Check if west button has already been pressed
+            down_pressed = 1;                       //Set west button state to pressed
+        }
+    } else {
+        down_pressed = 0;
     }
 
     if(~PINE & _BV(PE7)) {                  //If west button is pressed
@@ -280,25 +324,34 @@ int main(void)
                 }
             }
 
-            if (initialize) {
+            else if (initialize) {
                 //Initialized
                 printStringToLCD("Initializing ...", 0, 0);
                 Initialize();
                 waiting_for_input = 1;
+                clearLCD();
             }
 
-            if (waiting_for_input) {
+            else if (waiting_for_input) {
                 //Move position when buttons pressed
-
-                printStringToLCD("N/S/W/E to move", 0, 0);
+                
                 printStringToLCD("C: Confirm", 1, 0);
 
-
+                 if (board[position_y][position_x] == 0) {
+                    printStringToLCD("x", 0, 0);
+                } else if (board[position_y][position_x] == 1) {
+                    printStringToLCD("O", 0, 0);
+                } else {
+                    printStringToLCD("-1", 0, 0);
+                }
+                        
                 if (left_pressed) {
                     //position_x = (position_x - 1)%3;
-                    waiting_for_input = 0;
-                    end_game = 1;
-                    clearLCD();
+                    if (position_x == 0) {
+                        position_x = 2;
+                    } else {
+                        position_x = (position_x -1)%3;
+                    }
                     _delay_ms(500);
                 }
 
@@ -313,7 +366,11 @@ int main(void)
                 }
 
                 if (down_pressed){
-                    position_y = (position_y - 1) % 3;  
+                    if (position_y == 0) {
+                        position_y = 2;
+                    } else {
+                        position_y = (position_y -1)%3;
+                    }
                     _delay_ms(500);
                 }
                 curr_pos.x = COORDINATE_OFFSET_X + (position_x + 0.5) * CELL_SPACING;
@@ -325,21 +382,31 @@ int main(void)
                 //When move confirmed Draw
                 //Check which player -> Draw cross/Draw Circle
                 if (center_pressed){
-                    
-                    if (player_turn) {
-                        //Draw circle
-                        drawCircle(curr_pos, CELL_SPACING/2);
+                    if (board[position_y][position_x] == -1) {
+                         if (player_turn) {
+                            //Draw circle
+                            drawCircle(curr_pos, CELL_SPACING/2);
+                            board[position_y][position_x] = 1;
+                        } else {
+                            //Draw cross
+                            drawCross(curr_pos);
+                            board[position_y][position_x] = 0;
+                        }
+                        player_turn ^= 1;
+                       
+                        CheckWin();
                     } else {
-                        //Draw cross
-                        drawCross(curr_pos);
+                        clearLCD();
+                        printStringToLCD("Cell Full", 0, 0);
+                        _delay_ms(500);
+                        clearLCD();
                     }
-                    player_turn ^= 1;
-                    _delay_ms(500);
+
                 }
                 
             }
 
-            if (end_game) {
+            else if (end_game) {
                 
                 printStringToLCD("Congrats PX won!", 0, 0);
                 printStringToLCD("C: Restart!", 1, 0);
@@ -350,10 +417,6 @@ int main(void)
                     _delay_ms(500);
                 }
             }
-
-            //Check for win
-            //CheckWin();
-
         }
 
     }
