@@ -191,7 +191,24 @@ void CheckWin() {
         end_game = 1;
         return;
     }
+
+    unsigned char board_free_space = 0;
+    //Check if board is full
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 3; x++) {
+            if (board[y][x] == -1) {
+                board_free_space = 1;
+            }
+        }
+    }
+
+    if (board_free_space == 0) {
+        waiting_for_input = 0;
+        end_game = 1;
+        return;
+    }
     
+
 
     //if win||board full -> go to end and declare winner
 }
@@ -292,10 +309,7 @@ int main(void)
     PORTE |= _BV(PE7)|_BV(PE6)|_BV(PE5)|_BV(PE4);    //Set pin 4 and 6 as pull up
     DDRC &= ~(_BV(PC7));
     PORTC |= _BV(PC7);
-    //POTENTIAL FASTER SOLUTIONS FOR ANGLE CALCULATIONS
-    //q2 = atan2(sqrt(1-(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2)),(x*x+y*y-A1*A1-A2*A2)/(2*A1*A2));
-    //q1 = atan2(y,x)+atan2+-A2*sin(q2),A1+A2*cos(q2));
-    
+
     initBoard();
     initLCD();
     clearLCD();
