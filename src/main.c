@@ -8,7 +8,7 @@ float pulse0 = 0;
 float pulse1 = 0;
 float pen_up_pulse = 62;
 int board [3][3];
-
+int Dutycycle;
 //OXO
 unsigned char initialize = 0;
 unsigned char waiting_for_input = 0;
@@ -17,7 +17,7 @@ unsigned char run_game = 1;
 unsigned char end_game;
 unsigned char mainmenu = 1;
 
-char winner; //0 = player 0, 1 = player 1, -1 = draw
+char winner; //0 = player X, 1 = player O, -1 = draw
 
 unsigned char position_x = 0;
 unsigned char position_y = 0;
@@ -40,6 +40,7 @@ Punt curr_pos = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y};
 
 //Initialiseet de controle flag voor de pwm signalen, 0 = servo 0 pulse, 1 = servo 1 pulse, 2 = wait period
 char flag0 = 0;
+
 
 ISR(TIMER1_COMPA_vect){
     cli();
@@ -167,6 +168,7 @@ void CheckWin() {
         if (board[y][0] == 1 && board[y][1] == 0 && board[y][2] == 1) {
         waiting_for_input = 0;
         end_game = 1;
+
         return;
         }
         
@@ -205,6 +207,7 @@ void CheckWin() {
     if (board_free_space == 0) {
         waiting_for_input = 0;
         end_game = 1;
+        winner = -1;
         return;
     }
     
@@ -215,19 +218,19 @@ void CheckWin() {
 
 
 void Initialize() {
-    // Punt beginLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
-    // Punt eindLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    // Punt beginLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, COORDINATE_OFFSET_Y};
-    // Punt eindLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    // Punt beginLijn3 = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y + CELL_SPACING,};
-    // Punt eindLijn3 = {COORDINATE_OFFSET_X + 3 * CELL_SPACING, COORDINATE_OFFSET_Y + CELL_SPACING};
-    // Punt beginLijn4 = {COORDINATE_OFFSET_X, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    // Punt eindLijn4 = {COORDINATE_OFFSET_X + 3 *CELL_SPACING, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    Punt beginLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
+    Punt eindLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    Punt beginLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, COORDINATE_OFFSET_Y};
+    Punt eindLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    Punt beginLijn3 = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y + CELL_SPACING,};
+    Punt eindLijn3 = {COORDINATE_OFFSET_X + 3 * CELL_SPACING, COORDINATE_OFFSET_Y + CELL_SPACING};
+    Punt beginLijn4 = {COORDINATE_OFFSET_X, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    Punt eindLijn4 = {COORDINATE_OFFSET_X + 3 *CELL_SPACING, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
     
-    // drawLine(beginLijn1, eindLijn1);
-    // drawLine(beginLijn2, eindLijn2);
-    // drawLine(beginLijn3, eindLijn3);
-    // drawLine(beginLijn4, eindLijn4);
+    drawLine(beginLijn1, eindLijn1);
+    drawLine(beginLijn2, eindLijn2);
+    drawLine(beginLijn3, eindLijn3);
+    drawLine(beginLijn4, eindLijn4);
 
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 3; x++) {
@@ -239,6 +242,8 @@ void Initialize() {
     curr_pos.y = COORDINATE_OFFSET_Y + 0.5 * CELL_SPACING;
     initialize = 0;
 }
+
+
 
 void CheckInput() {
     if(~PINE & _BV(PE4)) {                  //If west button is pressed
@@ -280,7 +285,11 @@ void CheckInput() {
     } else {
         center_pressed = 0;
     }
+
+
 }
+
+
 
 
 int main(void)
@@ -310,6 +319,9 @@ int main(void)
     DDRC &= ~(_BV(PC7));
     PORTC |= _BV(PC7);
 
+    setupADC();
+
+
     initBoard();
     initLCD();
     clearLCD();
@@ -321,7 +333,6 @@ int main(void)
 
         //Print on screen "Press joystick to start"
         //Check for input
-
         
         while(run_game) {
             //Game_loop
@@ -406,8 +417,8 @@ int main(void)
                             drawCross(curr_pos);
                             board[position_y][position_x] = 0;
                         }
-                        player_turn ^= 1;
-                       
+                        winner = player_turn; // Winner voor switch, anders verkeerde!
+                        player_turn ^= 1;                  
                         CheckWin();
                     } else {
                         clearLCD();
@@ -421,8 +432,14 @@ int main(void)
             }
 
             else if (end_game) {
+                if (winner == 0) {
+                    printStringToLCD("X won!", 0, 0);
+                } else if (winner == 1) {
+                    printStringToLCD("O won!", 0, 0);
+                } else {
+                    printStringToLCD("Draw!", 0, 0);
+                }
                 
-                printStringToLCD("Congrats PX won!", 0, 0);
                 printStringToLCD("C: Restart!", 1, 0);
                 if (center_pressed) {
                     end_game = 0;
