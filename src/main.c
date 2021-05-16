@@ -40,7 +40,9 @@ Punt curr_pos = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y};
 
 //Initialiseet de controle flag voor de pwm signalen, 0 = servo 0 pulse, 1 = servo 1 pulse, 2 = wait period
 char flag0 = 0;
-
+//Joystick;
+int j_x;
+int j_y;
 
 ISR(TIMER1_COMPA_vect){
     cli();
@@ -72,6 +74,22 @@ ISR(TIMER1_COMPA_vect){
     sei();
 }
 
+
+//Joystick
+void InitADC(void)
+{
+    ADMUX|=(1<<REFS0);    
+    ADCSRA|=(1<<ADEN)|(1<<ADPS0)|(1<<ADPS1)|(1<<ADPS2); //ENABLE ADC, PRESCALER 128
+}
+
+uint16_t readadc(uint8_t ch)
+{
+    ch&=0b00000111;         //ANDing to limit input to 7
+    ADMUX = (ADMUX & 0xf8)|ch;  //Clear last 3 bits of ADMUX, OR with ch, ch to binary is exactly the same as anding the appropriate MUX's
+    ADCSRA|=(1<<ADSC);        //START CONVERSION
+    while((ADCSRA)&(1<<ADSC));    //WAIT UNTIL CONVERSION IS COMPLETE
+    return(ADC);        //RETURN ADC VALUE
+}
 
 //Berekent pulse uit hoek voor servo 0 en 1
 int pulsecalc0 (double angle) {
@@ -218,19 +236,19 @@ void CheckWin() {
 
 
 void Initialize() {
-    Punt beginLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
-    Punt eindLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    Punt beginLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, COORDINATE_OFFSET_Y};
-    Punt eindLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    Punt beginLijn3 = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y + CELL_SPACING,};
-    Punt eindLijn3 = {COORDINATE_OFFSET_X + 3 * CELL_SPACING, COORDINATE_OFFSET_Y + CELL_SPACING};
-    Punt beginLijn4 = {COORDINATE_OFFSET_X, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
-    Punt eindLijn4 = {COORDINATE_OFFSET_X + 3 *CELL_SPACING, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt beginLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
+    // Punt eindLijn1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt beginLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, COORDINATE_OFFSET_Y};
+    // Punt eindLijn2 = {COORDINATE_OFFSET_X + 2 * CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt beginLijn3 = {COORDINATE_OFFSET_X, COORDINATE_OFFSET_Y + CELL_SPACING,};
+    // Punt eindLijn3 = {COORDINATE_OFFSET_X + 3 * CELL_SPACING, COORDINATE_OFFSET_Y + CELL_SPACING};
+    // Punt beginLijn4 = {COORDINATE_OFFSET_X, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
+    // Punt eindLijn4 = {COORDINATE_OFFSET_X + 3 *CELL_SPACING, 2 * CELL_SPACING + COORDINATE_OFFSET_Y};
     
-    drawLine(beginLijn1, eindLijn1);
-    drawLine(beginLijn2, eindLijn2);
-    drawLine(beginLijn3, eindLijn3);
-    drawLine(beginLijn4, eindLijn4);
+    // drawLine(beginLijn1, eindLijn1);
+    // drawLine(beginLijn2, eindLijn2);
+    // drawLine(beginLijn3, eindLijn3);
+    // drawLine(beginLijn4, eindLijn4);
 
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 3; x++) {
@@ -287,6 +305,37 @@ void CheckInput() {
     }
 
 
+    j_x = readadc(7) - 512;
+    j_y = readadc(6) - 512;
+
+    
+    //Joystick controls
+    if (j_x > -256) {
+        right_pressed = 1;
+    } else {
+        right_pressed = 0;
+    }
+
+    if (j_x < 256) {
+        left_pressed = 1;
+    } else {
+        left_pressed = 0;
+    }
+
+    if (j_y > 256) {
+        up_pressed = 1;
+    } else {
+        up_pressed = 0;
+    }
+
+    if (j_y < -256) {
+        down_pressed = 1;
+    } else {
+        down_pressed = 0;
+    }
+
+
+
 }
 
 
@@ -297,6 +346,8 @@ int main(void)
     //SET C PINS AS OUTPUT
     DDRC |= _BV(PC0)|_BV(PC1);
     DDRB |= _BV(PB7);
+    DDRB |= _BV(PB2); //Power for joystick
+    PORTB |= _BV(PB2);
 
     //SET UP INTERRUPT
     TCCR1A |= _BV(COM1A1);
@@ -319,9 +370,7 @@ int main(void)
     DDRC &= ~(_BV(PC7));
     PORTC |= _BV(PC7);
 
-    setupADC();
-
-
+    InitADC();
     initBoard();
     initLCD();
     clearLCD();
@@ -359,17 +408,10 @@ int main(void)
 
             else if (waiting_for_input) {
                 //Move position when buttons pressed
-                
+                clearLCD();
+                j_x = readadc(7);
                 printStringToLCD("C: Confirm", 1, 0);
-
-                 if (board[position_y][position_x] == 0) {
-                    printStringToLCD("x", 0, 0);
-                } else if (board[position_y][position_x] == 1) {
-                    printStringToLCD("O", 0, 0);
-                } else {
-                    printStringToLCD("-1", 0, 0);
-                }
-                        
+                printIntToLCD(j_x, 0, 0);        
                 if (left_pressed) {
                     //position_x = (position_x - 1)%3;
                     if (position_x == 0) {
