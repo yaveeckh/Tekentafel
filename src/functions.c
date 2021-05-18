@@ -69,8 +69,7 @@ void InitServo() {
 
     //Set match value
     OCR1A = O_50;
-    //Enable interrupts
-    sei();
+
     //Interrupt on compare match
     TIMSK1 |= _BV(OCIE1A);
 }
@@ -165,6 +164,8 @@ void CheckInput() {
 
 //Draw the game board, initialize the board array
 void InitGameBoard(){
+    //Enable interrupts
+    sei();
     //Calculate edge points of line and draw them
     Punt pb1 = {COORDINATE_OFFSET_X + CELL_SPACING, COORDINATE_OFFSET_Y};
     Punt pe1 = {COORDINATE_OFFSET_X + CELL_SPACING, 3 * CELL_SPACING + COORDINATE_OFFSET_Y};
