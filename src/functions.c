@@ -57,7 +57,7 @@ void InitServo() {
     DDRC |= _BV(PC0)|_BV(PC1);
     DDRB |= _BV(PB7);
     
-    //Set prescaler and cc mode
+    //Set prescaler and ctc mode
     TCCR1A |= _BV(COM1A1);
     TCCR1A &= ~_BV(COM1A0);
 
