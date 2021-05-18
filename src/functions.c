@@ -137,23 +137,23 @@ void CheckInput() {
     
     //Joystick controls
     //Check if x-axis reaches edge values, modify button state variable accordingly
-    if (j_x > -256) {
+    if (j_x > 256) {
         right_pressed = 1;
     } else {
         right_pressed = 0;
     }
 
-    if (j_x > -256) {
-        right_pressed = 1;
-    } else {
-        right_pressed = 0;
-    }
-
-    //Check if y-axis reaches edge values, modify button state variable accordingly
-    if (j_x < 256) {
+    if (j_x < -256) {
         left_pressed = 1;
     } else {
         left_pressed = 0;
+    }
+
+    //Check if y-axis reaches edge values, modify button state variable accordingly
+    if (j_y < -256) {
+        down_pressed = 1;
+    } else {
+        down_pressed = 0;
     }
 
     if (j_y > 256) {
